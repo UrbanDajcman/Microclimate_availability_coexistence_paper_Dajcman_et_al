@@ -1,0 +1,6 @@
+micro_*.RData
+ecto_*.Rda
+*.RData
+*.pdf
+*.png
+*.jpg

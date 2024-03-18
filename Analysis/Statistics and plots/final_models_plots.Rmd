@@ -1,0 +1,1136 @@
+---
+title: "DEB_Symp_final_models"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+using<-function(...) {
+    libs<-unlist(list(...))
+    req<-unlist(lapply(libs,require,character.only=TRUE))
+    need<-libs[req==FALSE]
+    if(length(need)>0){ 
+        install.packages(need)
+        lapply(need,require,character.only=TRUE)
+    }
+}
+```
+
+
+```{r}
+using("dplyr", "ggplot2", "ggpubr", "rstatix", "NCmisc", "car", "lme4", "DHARMa", "emmeans", "performance", "sjPlot", "rphylopic", "jpeg")
+```
+
+
+```{r}
+
+rm(list = ls())
+
+
+load("../../Results/ECTOTHERM_results/results_all_ecto2.Rda")
+```
+
+
+
+## Prepare modeling data.frames
+
+```{r}
+results_all
+res_ecto_stats <- results_all
+res_ecto_stats
+
+res_ecto_stats$Forage_year <- res_ecto_stats$Forage/res_ecto_stats$Year
+res_ecto_stats$Bask_year <- res_ecto_stats$Bask/res_ecto_stats$Year
+
+res_ecto_stats$Fecundity_year <- res_ecto_stats$Fecundity/res_ecto_stats$Year
+res_ecto_stats$Clutches_year <- res_ecto_stats$Clutches/res_ecto_stats$Year
+
+head(res_ecto_stats)
+
+colnames(res_ecto_stats)
+```
+
+
+
+
+## Prepare plot data.frames
+```{r}
+plot_res_all <- results_all
+
+plot_res_all$Forage_year <- plot_res_all$Forage/plot_res_all$Year
+plot_res_all$Bask_year <- plot_res_all$Bask/plot_res_all$Year
+
+plot_res_all$Fecundity_year <- plot_res_all$Fecundity/plot_res_all$Years_repro
+plot_res_all$Clutches_year <- plot_res_all$Clutches/plot_res_all$Years_repro
+
+plot_res_all
+
+plot_res_all_2 <- plot_res_all %>% mutate(Species = ifelse(Species=="Pmur", "P.muralis", "I. horvathi"))
+
+
+plot_res_all_2$Sintopy <- as.character(plot_res_all_2$Sintopy)
+   
+
+plot_res_all_2$Sintopy[plot_res_all_2$Sintopy == "sint"] <- "Sintopy"
+plot_res_all_2$Sintopy[plot_res_all_2$Sintopy == "aloPmur"] <- "Muralis allotopy"
+plot_res_all_2$Sintopy[plot_res_all_2$Sintopy == "aloIhor"] <- "Horvathi allotopy"
+
+
+
+plot_res_all_2 <- plot_res_all_2 %>% reorder_levels(Sintopy, order = c("Muralis allotopy", "Sintopy", "Horvathi allotopy"))
+
+
+colnames(plot_res_all_2)
+
+head(plot_res_all_2)
+
+
+
+plotting_table_SD<- plot_res_all_2 %>% 
+    group_by(Species,Sintopy) %>%
+    summarise_each(funs(mean,sd,se=sd(.)/sqrt(n())))
+
+
+head(plotting_table_SD)
+
+```
+
+
+
+```{r}
+pd <- position_dodge(0.2) # move them .05 to the left and right
+group.colors=c("I. horvathi" = "red3", "P. muralis" = "gold")
+
+```
+
+
+## MODELS
+
+## Plot elevations and nice picture shit
+
+```{r}
+
+res_ecto_stats$Sintopy_long[res_ecto_stats$Sintopy == "sint"] <- "Sintopy"
+res_ecto_stats$Sintopy_long[res_ecto_stats$Sintopy == "aloPmur"] <- "Muralis allotopy"
+res_ecto_stats$Sintopy_long[res_ecto_stats$Sintopy == "aloIhor"] <- "Horvathi allotopy"
+
+res_ecto_stats
+
+res_ecto_stats
+
+
+
+
+uuid <- get_uuid(name = "Podarcis tiliguerta", n = 1)
+uuid2 <- get_uuid(name = "Sphenomorphus dussumieri", n = 1)
+
+
+img_horvathi <- get_phylopic(uuid = uuid2)
+img_podarcis <- get_phylopic(uuid = uuid)
+
+
+res_ecto_stats
+
+elevation_descriptive_plot  <- ggplot(res_ecto_stats, aes())+
+     
+          add_phylopic(img = img_podarcis,
+                        x = 500,
+                        y = 300 ,
+                        ysize = 200 ,
+                        color = "gold")+
+     
+          add_phylopic(img = img_horvathi,
+                        x = 1050,
+                        y = 1150 ,
+                        ysize = 250 ,
+                        color = "firebrick",
+                        angle = 45)+
+     
+          geom_line(aes(x=Elevation, y=Elevation), linetype="dashed", alpha=0.7)+
+          geom_point(aes(x=Elevation, y=Elevation, color=Loc_type), size = 10)+
+          scale_color_manual(values = c("firebrick", "gold","navyblue"))+
+  
+          theme_classic()+ 
+     
+          theme(axis.title.x=element_blank(),
+            axis.text.x=element_blank(),
+            axis.ticks.x=element_blank(),
+            legend.position = "none",
+            text = element_text(size = 60))+
+  
+          labs(x=NULL, y="Elevation (m)")
+                                
+                                
+
+
+elevation_descriptive_plot
+  
+   
+
+     
+ggsave("elevation_descriptive_plot.pdf", plot=elevation_descriptive_plot, path = "../../Figures", units="cm", width=20, height=30, dpi=300 )
+
+ggsave("elevation_descriptive_plot.png", plot=elevation_descriptive_plot, path = "../../Figures", units="cm", width=20, height=30, dpi=300 )
+
+ggsave("elevation_descriptive_plot.svg", plot=elevation_descriptive_plot, path = "../../Figures", units="cm", width=20, height=30, dpi=300 )
+     
+   
+  
+     
+
+
+legend_pics  <- ggplot(res_ecto_stats, aes())+
+     
+      add_phylopic(img = img_podarcis,
+                        x = 300,
+                        y = 450 ,
+                        ysize = 350 ,
+                        color = "gold")+
+     
+      add_phylopic(img = img_horvathi,
+                        x = 1050,
+                        y = 1150 ,
+                        ysize = 450 ,
+                        color = "red4",
+                        angle = 45)
+
+legend_pics
+   
+   
+   
+```
+
+## Max weight; length
+
+```{r}
+
+res_ecto_stats$MaxLen
+res_ecto_stats$MaxWgt
+```
+
+### Yearly basking time INCLUDE
+
+```{r}
+
+glmer_BaskYear <- lme4::lmer(Bask_year ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    glmer_BaskYear
+    summary(glmer_BaskYear)
+    Anova(glmer_BaskYear)
+    residuals(glmer_BaskYear)
+    
+    qqplot<-ggqqplot(residuals(glmer_BaskYear))
+    print( qqplot)
+    shapiro.test(residuals(glmer_BaskYear))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_BaskYear)
+  plot(simulationOutput)
+
+  
+  plot_model(glmer_BaskYear)
+  
+  sjPlot:: tab_model(glmer_BaskYear)
+  
+ 
+ emm_1 <- emmeans(glmer_BaskYear, pairwise ~ Species*Sintopy)
+ 
+  emm_1
+  
+ 
+  contrasts_m <- as.data.frame(emm_1$contrasts)
+  contrasts_m
+  
+  filter(contrasts_m, p.value < 0.05)
+  plot(emm_1, comparisons = TRUE)
+
+  
+plot_model(glmer_BaskYear, show.values=TRUE, show.p=TRUE)
+  
+  
+
+
+
+## PLOTS
+
+
+Bask_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=Bask_year_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Bask_year_mean-Bask_year_se, ymax=Bask_year_mean+Bask_year_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=Bask_year, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Yearly basking time (h)", x=" ")
+
+Bask_means_plot
+
+
+ ggsave("Bask_means_plot.pdf", plot=Bask_means_plot, path = "../../Figures/Ectotherm_plots/", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+Bask_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=Bask_year, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.6)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme()+
+  labs(y=NULL, x="Elevation (m)")
+
+Bask_elev_plot
+
+
+
+ #ggsave("AnnAct_elev_plot.png", plot=AnnAct_elev_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+
+BaskY_arr <- ggarrange(Bask_means_plot, Bask_elev_plot, ncol = 2, labels = c("A", "B") )
+BaskY_arr
+
+
+
+ggsave("BaskY_arr.pdf", plot=BaskY_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+
+
+  
+```
+
+
+### Yearly foraging time
+
+```{r}
+
+glmer_ForageYear <- lme4::lmer(Forage_year ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    summary(glmer_ForageYear)
+    Anova(glmer_ForageYear)
+    residuals(glmer_ForageYear)
+    
+    qqplot<-ggqqplot(residuals(glmer_ForageYear))
+    print( qqplot)
+    shapiro.test(residuals(glmer_ForageYear))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_ForageYear)
+  plot(simulationOutput)
+  testDispersion(simulationOutput)
+
+  
+  plot_model(glmer_ForageYear, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glmer_ForageYear)
+  
+ 
+ emm_1 <- emmeans(glmer_ForageYear, pairwise ~ Species*Sintopy)
+ 
+  emm_1
+  
+   contrasts_m <- as.data.frame(emm_1$contrasts)
+  contrasts_m
+  
+  filter(contrasts_m, p.value < 0.05)
+ 
+  
+  plot(emm_1, comparisons = TRUE)
+
+  
+plot_model(glmer_ForageYear, show.values=TRUE, show.p=TRUE)
+  
+  
+
+
+
+## PLOTS
+
+
+Forage_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=Forage_year_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Forage_year_mean-Forage_year_se, ymax=Forage_year_mean+Forage_year_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=Forage_year, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Yearly foraging time (h)", x=" ")
+
+Forage_means_plot
+
+
+ #ggsave("AnnAct_means_plot.png", plot=AnnAct_means_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+Forage_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=Forage_year, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group= Species), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+ # scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y="Yearly foraging time (h)", x="Elevation (m)")
+
+Forage_elev_plot
+
+
+
+ ggsave("Forage_elev_plot.pdf", plot=Forage_elev_plot, path = "../../Figures/Ectotherm_plots/", units="cm", width=15, height=15, dpi=300 )
+
+
+Forage_arr <- ggarrange(Forage_means_plot, Forage_elev_plot, ncol = 2, labels = c("A", "B") )
+Forage_arr
+
+
+
+ggsave("Forage_arr.png", plot=Forage_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+  
+```
+
+
+### Lifespan
+
+```{r}
+glmer_LifeSpan <- lme4::lmer(LifeSpan ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    summary(glmer_LifeSpan)
+    Anova(glmer_LifeSpan)
+    residuals(glmer_LifeSpan)
+    
+    qqplot<-ggqqplot(residuals(glmer_LifeSpan))
+    print( qqplot)
+    shapiro.test(residuals(glmer_LifeSpan))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_LifeSpan)
+  plot(simulationOutput)
+
+  
+  plot_model(glmer_LifeSpan, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glmer_LifeSpan)
+  
+ 
+ emm_1 <- emmeans(glmer_LifeSpan, pairwise ~ Species*Sintopy)
+ 
+  emm_1
+  
+   contrasts_m <- as.data.frame(emm_1$contrasts)
+  contrasts_m
+  
+  filter(contrasts_m, p.value < 0.05)
+  plot(emm_1, comparisons = TRUE)
+ # plot(emm_1, comparisons = TRUE)
+
+  
+  
+
+
+
+## PLOTS
+
+
+LifeSpan_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=LifeSpan_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=LifeSpan_mean-LifeSpan_se, ymax=LifeSpan_mean+LifeSpan_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=LifeSpan, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="LifeSpan (years)", x=" ")
+
+LifeSpan_means_plot
+
+#ggsave("AnnAct_means_plot.png", plot=AnnAct_means_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+LifeSpan_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=LifeSpan, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y="Lifespan (years)", x="Elevation (m)")
+
+LifeSpan_elev_plot
+
+
+
+ ggsave("LifeSpan_elev_plot.pdf", plot=LifeSpan_elev_plot, path = "../../Figures/Ectotherm_plots/", units="cm", width=15, height=15, dpi=300 )
+
+
+LifeSpan_arr <- ggarrange(LifeSpan_means_plot, LifeSpan_elev_plot, ncol = 2, labels = c("A", "B") )
+LifeSpan_arr
+
+
+
+ggsave("LifeSpan_arr.png", plot=LifeSpan_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+  
+```
+
+
+### Years reproducing, marginally non-normal
+
+```{r}
+res_ecto_stats
+```
+
+
+```{r}
+glmer_Years_repro <- lme4::lmer(Years_repro ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    summary(glmer_Years_repro)
+    Anova(glmer_Years_repro)
+    residuals(glmer_Years_repro)
+    
+    qqplot<-ggqqplot(residuals(glmer_Years_repro))
+    print( qqplot)
+    shapiro.test(residuals(glmer_Years_repro))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_Years_repro)
+  plot(simulationOutput)
+
+  
+  plot_model(glmer_Years_repro, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glmer_Years_repro)
+  
+ 
+ emm_1 <- emmeans(glmer_Years_repro, pairwise ~ Species)
+ 
+  emm_1
+  
+   contrasts_m <- as.data.frame(emm_1$contrasts)
+  contrasts_m
+  
+  filter(contrasts_m, p.value < 0.05)
+  
+  plot(emm_1, comparisons = TRUE)
+
+  
+  
+
+
+
+## PLOTS
+
+
+Years_repro_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=Years_repro_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Years_repro_mean-Years_repro_se, ymax=Years_repro_mean+Years_repro_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=Years_repro, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Years reproducing (years)", x=" ")
+
+Years_repro_means_plot
+
+#ggsave("AnnAct_means_plot.png", plot=AnnAct_means_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ # Elevation + Species
+ 
+Years_repro_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=Years_repro, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), position=pd, size = 3, alpha=0.8)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=Species), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y=NULL, x="Elevation (m)")
+
+Years_repro_elev_plot
+
+
+
+ #ggsave("AnnAct_elev_plot.png", plot=AnnAct_elev_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+
+Years_repro_arr <- ggarrange(Years_repro_means_plot, Years_repro_elev_plot, ncol = 2, labels = c("A", "B") )
+Years_repro_arr
+
+
+
+ggsave("Years_repro_arr.png", plot=Years_repro_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+  
+```
+
+### Yearly fecundity
+
+```{r}
+glmer_Fecundity_year <- lme4::lmer(Fecundity_year ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    summary(glmer_Fecundity_year)
+    Anova(glmer_Fecundity_year)
+    residuals(glmer_Fecundity_year)
+    
+    qqplot<-ggqqplot(residuals(glmer_Fecundity_year))
+    print( qqplot)
+    shapiro.test(residuals(glmer_Fecundity_year))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_Fecundity_year)
+  plot(simulationOutput)
+
+  
+  plot_model(glmer_Fecundity_year, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glmer_Fecundity_year)
+  
+ 
+ emm_1 <- emmeans(glmer_Fecundity_year, pairwise ~ Species*Sintopy)
+ 
+  emm_1
+  
+    contrasts_m <- as.data.frame(emm_1$contrasts)
+  contrasts_m
+  
+  filter(contrasts_m, p.value < 0.05)
+  
+  plot(emm_1, comparisons = TRUE)
+
+  
+  
+
+
+
+## PLOTS
+
+
+Fecundity_year_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=Fecundity_year_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Fecundity_year_mean-Fecundity_year_se, ymax=Fecundity_year_mean+Fecundity_year_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=Fecundity_year, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Yearly fecundity", x="Sintopy")
+
+Fecundity_year_means_plot
+
+ggsave("Fecundity_year_means_plot.pdf", plot=Fecundity_year_means_plot, path = "../../Figures/Ectotherm_plots/", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+Fecundity_year_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=Fecundity_year, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y=NULL, x="Elevation (m)")+
+  ylim(0,8)
+
+Fecundity_year_elev_plot
+
+
+
+ #ggsave("AnnAct_elev_plot.png", plot=AnnAct_elev_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+
+Fecundity_year_arr <- ggarrange(Fecundity_year_means_plot, Fecundity_year_elev_plot, ncol = 2, labels = c("A", "B") )
+Fecundity_year_arr
+
+
+
+ggsave("Fecundity_year_arr.png", plot=Fecundity_year_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+  
+```
+
+### Clutches per year
+
+```{r}
+glmer_Clutches_year<- lme4::lmer(Clutches_year ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    summary(glmer_Clutches_year)
+    Anova(glmer_Clutches_year)
+    residuals(glmer_Clutches_year)
+    
+    qqplot<-ggqqplot(residuals(glmer_Clutches_year))
+    print( qqplot)
+    shapiro.test(residuals(glmer_Clutches_year))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_Clutches_year)
+  plot(simulationOutput)
+
+  
+  plot_model(glmer_Clutches_year, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glmer_Clutches_year)
+  
+ 
+ emm_1 <- emmeans(glmer_Clutches_year, pairwise ~ Species*Sintopy)
+ 
+  emm_1
+  plot(emm_1, comparisons = TRUE)
+
+  
+  
+
+
+
+## PLOTS
+
+
+Clutches_year_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=Clutches_year_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Clutches_year_mean-Clutches_year_se, ymax=Clutches_year_mean+Clutches_year_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=Clutches_year, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Clutches per year", x="Syntopy ")
+
+Clutches_year_means_plot
+
+ggsave("Clutches_year_means_plot.pdf", plot=Clutches_year_means_plot, path = "../../Figures/Ectotherm_plots/", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+Clutches_year_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=Clutches_year, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y=NULL, x="Elevation (m)")
+
+Clutches_year_elev_plot
+
+
+
+ #ggsave("AnnAct_elev_plot.png", plot=AnnAct_elev_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+
+Clutches_year_arr <- ggarrange(Clutches_year_means_plot, Clutches_year_elev_plot, ncol = 2, labels = c("A", "B") )
+Clutches_year_arr
+
+
+
+ggsave("Clutches_year_arr.png", plot=Clutches_year_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+  
+```
+
+### Months to maturity
+
+```{r}
+glmer_MonMature<- lme4::lmer(MonMature ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    summary(glmer_MonMature)
+    Anova(glmer_MonMature)
+    residuals(glmer_MonMature)
+    
+    qqplot<-ggqqplot(residuals(glmer_MonMature))
+    print( qqplot)
+    shapiro.test(residuals(glmer_MonMature))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_MonMature)
+  plot(simulationOutput)
+
+  
+  plot_model(glmer_MonMature, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glmer_MonMature)
+  
+ 
+ emm_1 <- emmeans(glmer_MonMature, pairwise ~ Species*Sintopy)
+ 
+  emm_1
+  #plot(emm_1, comparisons = TRUE)
+
+  
+  
+
+
+
+## PLOTS
+
+
+MonMature_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=MonMature_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=MonMature_mean-MonMature_se, ymax=MonMature_mean+MonMature_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=MonMature, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Months till maturity", x=" ")
+
+MonMature_means_plot
+
+#ggsave("AnnAct_means_plot.png", plot=AnnAct_means_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+MonMature_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=MonMature, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=Species), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+ # scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y="Months to maturity", x="Elevation (m)")
+
+MonMature_elev_plot
+
+
+
+ ggsave("MonMature_elev_plot.pdf", plot=MonMature_elev_plot, path = "../../Figures/Ectotherm_plots/", units="cm", width=15, height=15, dpi=300 )
+
+
+MonMature_arr <- ggarrange(MonMature_means_plot, MonMature_elev_plot, ncol = 2, labels = c("A", "B") )
+MonMature_arr
+
+
+
+ggsave("MonMature_arr.png", plot=MonMature_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+  
+```
+
+### Months to reproduction
+
+```{r}
+glmer_MonRepro<- lme4::lmer(MonRepro ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+
+
+    # Get summary and p values
+    summary(glmer_MonRepro)
+    Anova(glmer_MonRepro)
+    residuals(glmer_MonRepro)
+    
+    qqplot<-ggqqplot(residuals(glmer_MonRepro))
+    print( qqplot)
+    shapiro.test(residuals(glmer_MonRepro))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_MonRepro)
+  plot(simulationOutput)
+
+  
+  plot_model(glmer_MonRepro, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glmer_MonRepro)
+  
+ 
+ emm_1 <- emmeans(glmer_MonRepro, pairwise ~ Species*Sintopy)
+ 
+  emm_1
+  plot(emm_1, comparisons = TRUE)
+
+  
+  
+
+
+
+## PLOTS
+
+
+MonRepro_means_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=MonRepro_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=MonRepro_mean-MonRepro_se, ymax=MonRepro_mean+MonRepro_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=MonRepro, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3","grey", "red3", "gold", "grey", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Months till reproduction", x=" ")
+
+MonRepro_means_plot
+
+#ggsave("AnnAct_means_plot.png", plot=AnnAct_means_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+MonRepro_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=MonRepro, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y=NULL, x="Elevation (m)")
+
+MonRepro_elev_plot
+
+
+
+ #ggsave("AnnAct_elev_plot.png", plot=AnnAct_elev_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+
+MonRepro_arr <- ggarrange(MonRepro_means_plot, MonRepro_elev_plot, ncol = 2, labels = c("A", "B") )
+MonRepro_arr
+
+
+
+ggsave("MonRepro_arr.png", plot=MonRepro_arr, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+
+
+
+### Three way interaction, split data and rerun models by species
+
+plotting_ihor <- subset(plotting_table_SD, Species == "I. horvathi")
+res_ecto_ihor <- subset(res_ecto_stats, Species == "Ihor")
+plot_res_IHOR <- subset(plot_res_all_2, Species == "I. horvathi")
+
+plotting_pmur <- subset(plotting_table_SD, Species == "P.muralis")
+res_ecto_pmur <- subset(res_ecto_stats, Species == "Pmur")
+plot_res_PMUR <- subset(plot_res_all_2, Species == "P.muralis")
+
+
+### Separate models
+
+#Horvathi
+
+glm_MonRepro_ihor<- glm(MonRepro ~ Elevation*Sintopy, data = res_ecto_ihor)
+
+
+    # Get summary and p values
+    summary(glm_MonRepro_ihor)
+    Anova(glm_MonRepro_ihor)
+    residuals(glm_MonRepro_ihor)
+    
+    qqplot<-ggqqplot(residuals(glm_MonRepro_ihor))
+    print( qqplot)
+    shapiro.test(residuals(glm_MonRepro_ihor))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glm_MonRepro_ihor)
+  plot(simulationOutput)
+
+  
+  plot_model(glm_MonRepro_ihor, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glm_MonRepro_ihor)
+  
+ 
+ emm_1 <- emmeans(glm_MonRepro_ihor, pairwise ~ Sintopy)
+ 
+  emm_1
+  plot(emm_1, comparisons = TRUE)
+
+
+#Muralis
+  
+  glm_MonRepro_pmur<- glm(MonRepro ~ Elevation*Sintopy, data = res_ecto_pmur)
+
+
+    # Get summary and p values
+    summary(glm_MonRepro_pmur)
+    Anova(glm_MonRepro_pmur)
+    residuals(glm_MonRepro_pmur)
+    
+    qqplot<-ggqqplot(residuals(glm_MonRepro_pmur))
+    print( qqplot)
+    shapiro.test(residuals(glm_MonRepro_pmur))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glm_MonRepro_pmur)
+  plot(simulationOutput)
+
+  
+  plot_model(glm_MonRepro_pmur, show.values=TRUE, show.p=TRUE)
+  sjPlot:: tab_model(glm_MonRepro_pmur)
+  
+ 
+ emm_1 <- emmeans(glm_MonRepro_pmur, pairwise ~ Sintopy)
+ 
+  emm_1
+  plot(emm_1, comparisons = TRUE)
+  
+  
+  # Make 4 plots 
+  
+  
+
+MonRepro_means_plot_IHOR <-ggplot(plotting_ihor, aes(x=Sintopy, y=MonRepro_mean)) + 
+    geom_errorbar(aes(ymin=MonRepro_mean-MonRepro_se, ymax=MonRepro_mean+MonRepro_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red3", "gold"))+
+ geom_point(data=plot_res_IHOR , aes(x=Sintopy, y=MonRepro, group = Species, colour=interaction(Sintopy, Species)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red3", "red3", "grey", "red3"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Months till reproduction", x=" ")
+
+MonRepro_means_plot_IHOR
+
+ggsave("MonRepro_means_plot_IHOR.pdf", plot=MonRepro_means_plot_IHOR, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+ 
+ 
+MonRepro_elev_plot_IHOR <- ggplot(plot_res_IHOR, aes(x=Elevation, y=MonRepro, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red3", "gold"))+
+  scale_color_manual(values = c("red3", "gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y=NULL, x="Elevation (m)")
+
+MonRepro_elev_plot_IHOR
+
+
+
+
+
+
+
+
+MonRepro_means_plot_PMUR <-ggplot(plotting_pmur, aes(x=Sintopy, y=MonRepro_mean)) + 
+    geom_errorbar(aes(ymin=MonRepro_mean-MonRepro_se, ymax=MonRepro_mean+MonRepro_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("gold"))+
+ geom_point(data=plot_res_IHOR , aes(x=Sintopy, y=MonRepro, group = Species, colour=interaction(Sintopy, Species)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("grey", "gold", "gold", "gold"))+
+  theme_pubclean()+
+   theme(legend.position = "none")+
+  labs(y="Months till reproduction", x=" ")
+
+MonRepro_means_plot_PMUR
+
+#ggsave("AnnAct_means_plot.png", plot=AnnAct_means_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+ 
+ 
+MonRepro_elev_plot_PMUR<- ggplot(plot_res_PMUR, aes(x=Elevation, y=MonRepro, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              linewidth = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("gold"))+
+  scale_color_manual(values = c("gold"))+
+  theme_pubclean()+
+ theme(legend.position = "none")+
+  labs(y=NULL, x="Elevation (m)")
+
+MonRepro_elev_plot_PMUR
+
+
+
+ #ggsave("AnnAct_elev_plot.png", plot=AnnAct_elev_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+
+MonRepro_arr_split <- ggarrange(MonRepro_means_plot_IHOR, MonRepro_means_plot_PMUR, MonRepro_elev_plot_IHOR, MonRepro_elev_plot_PMUR, ncol = 2, nrow=2, labels = c("A", "B", "C", "D"))
+
+MonRepro_arr_split
+
+
+
+ggsave("MonRepro_arr_split.pdf", plot=MonRepro_arr_split, path = "../../Figures/Ectotherm_plots/", units="cm", width=30, height=15, dpi=300 )
+  
+  
+  
+```
+
+
+
+
