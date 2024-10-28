@@ -1,0 +1,233 @@
+---
+title: "ecto stats script"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+using<-function(...) {
+    libs<-unlist(list(...))
+    req<-unlist(lapply(libs,require,character.only=TRUE))
+    need<-libs[req==FALSE]
+    if(length(need)>0){ 
+        install.packages(need)
+        lapply(need,require,character.only=TRUE)
+    }
+}
+
+
+using("lme4", "DHARMa", "ggpubr", "ggplot2", "rstatix", "NCmisc", "emmeans", "car", "performance", "sjPlot")
+```
+
+
+
+```{r}
+rm(list = ls())
+```
+
+
+```{r}
+load("../../Results/ECTOTHERM_results/results_all_ecto.Rda")
+results_all
+```
+
+
+```{r}
+results_all
+res_ecto_stats <- results_all
+res_ecto_stats
+
+res_ecto_stats$Forage_year <- res_ecto_stats$Forage/res_ecto_stats$Year
+res_ecto_stats$Bask_year <- res_ecto_stats$Bask/res_ecto_stats$Year
+
+res_ecto_stats$Fecundity_year <- res_ecto_stats$Fecundity/res_ecto_stats$Year
+res_ecto_stats$Clutches_year <- res_ecto_stats$Clutches/res_ecto_stats$Year
+
+res_ecto_stats
+```
+
+```{r}
+colnames(res_ecto_stats)
+```
+
+
+
+```{r}
+colnames(res_ecto_stats)
+
+plot_cols <- colnames(res_ecto_stats)[c(4,5,6,7,8,9,10,11,12,17,18,19,20,21,22,23,24,25,26)]
+plot_cols
+
+
+plot_cols_2 <- colnames(res_ecto_stats)[14:16]
+plot_cols_2
+
+```
+
+
+```{r}
+for (i in 1:length(plot_cols)){
+
+  means <- res_ecto_stats %>%
+    group_by(Species, Sintopy) %>%
+      get_summary_stats(plot_cols[i], type = c("mean_se"))
+  
+  print(means)
+
+}
+
+
+
+
+```
+
+
+```{r}
+plot_cols
+res_ecto_stats
+```
+
+
+
+```{r}
+
+ggplot(res_ecto_stats, aes(x=AnnualAct, color=Sintopy)) + 
+  geom_histogram(binwidth=1000)
+
+
+```
+
+
+
+```{r}
+ggplot(res_ecto_stats, aes(x=plot_cols[4]) + 
+         geom_histogram(binwidth=.5))
+```
+
+
+
+
+
+
+```{r}
+for (i in 1:length(plot_cols)){
+
+  outliers <- res_ecto_stats %>%
+                group_by(Species, Sintopy) %>%
+                  identify_outliers(plot_cols[i])
+  
+  print(outliers)
+
+}
+
+
+
+
+```
+
+
+
+
+```{r}
+for (i in 1:length(plot_cols)){
+  
+    #define variable
+     variable <- plot_cols[i]
+  
+     
+     mod <- as.formula(sprintf("%s~Elevation*Species*Sintopy + (1|Locality) ", variable ))
+     mod2 <- as.formula(sprintf("%s~Elevation*Species*Sintopy", variable ))
+
+     
+     
+     
+    #Create model
+    glmer_fit <- glmer(formula = mod, data = res_ecto_stats)
+    glm_fit <- glm(formula = mod2, data = res_ecto_stats)
+
+    # Get summary and p values
+    print(summary(glmer_fit))
+    print(Anova(glmer_fit))
+    model_residuals <- residuals(glmer_fit)
+    
+    qqplot<-ggqqplot(residuals(glmer_fit))
+    print( qqplot)
+    print(shapiro.test(model_residuals))
+    
+    
+    #Check model fit, residuals etc.
+    
+    simulationOutput <- simulateResiduals(fittedModel = glmer_fit)
+  plot(simulationOutput)
+
+  
+  plot(plot_model(glmer_fit))
+  #print(sjPlot:: tab_model(glmer_fit))
+
+}
+
+```
+
+
+```{r}
+
+glmer_fit <- glmer(Forage_year ~ Elevation*Species*Sintopy + (1|Locality), data = res_ecto_stats)
+glm_fit <-glm(Years_repro ~ Elevation*Species*Sintopy, data=res_ecto_stats)
+
+AIC(glmer_fit, glm_fit)
+
+
+  ggqqplot(residuals(glmer_fit))
+  shapiro.test(residuals(glmer_fit))
+  
+ 
+  
+  
+  #lot_model(glmer_fit, ,type="pred",
+  #         terms=c("Elevation","Species", "Sintopy", "Locality"),
+  #         pred.type="re", ci.lvl = NA)
+  
+  
+  
+  sjPlot::plot_model(glmer_fit, type="pred", terms=c("Elevation","Sintopy"), pred.type="re", ci.lvl=NA)
+  
+  
+  
+  simulationOutput <- simulateResiduals(fittedModel = glmer_fit)
+plot(simulationOutput)
+```
+
+
+
+
+
+```{r}
+for (i in 1:length(plot_cols)){
+
+  shap_test <- plot_cols[i]
+
+print_shap_test<- res_ecto_stats %>%
+  group_by(Species, Sintopy) %>%
+  shapiro_test(shap_test)
+
+
+print(print_shap_test)
+
+
+}
+```
+
+
+
+
+
+
+
+
+
+
+
+

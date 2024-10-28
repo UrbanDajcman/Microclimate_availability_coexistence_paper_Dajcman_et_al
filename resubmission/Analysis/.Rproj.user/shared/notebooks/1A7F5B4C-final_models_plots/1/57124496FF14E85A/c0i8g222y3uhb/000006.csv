@@ -1,0 +1,97 @@
+"0",""
+"0",""
+"0",""
+"0","plotting_table_SD<- plot_res_all_2 %>% "
+"0","    group_by(Species,Sintopy) %>%"
+"0","    summarise_each(funs(mean,sd,se=sd(.)/sqrt(n())))"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"0","head(plotting_table_SD)"

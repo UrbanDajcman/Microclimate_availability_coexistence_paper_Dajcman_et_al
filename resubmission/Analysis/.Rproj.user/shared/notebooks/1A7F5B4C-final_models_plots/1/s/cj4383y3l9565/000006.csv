@@ -1,0 +1,117 @@
+"0",""
+"0",""
+"0",""
+"0","plotting_table_SD<- plot_res_all_2 %>% "
+"0","    group_by(Species,Sintopy) %>%"
+"0","    summarise_each(funs(mean,sd,se=sd(.)/sqrt(n())))"
+"2","Warning:"
+"2"," [38;5;255m`summarise_each_()` was deprecated in dplyr 0.7.0.
+[36mi[38;5;255m Please use `across()` instead.
+[36mi[38;5;255m The deprecated feature was likely used in the [34mdplyr[38;5;255m package.
+  Please report the issue at [3m[34m<https://github.com/tidyverse/dplyr/issues>[38;5;255m[23m.
+[90mThis warning is displayed once every 8 hours.[38;5;255m
+[90mCall `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.[38;5;255m[39m
+"
+"2","Warning:"
+"2"," [38;5;255m`funs()` was deprecated in dplyr 0.8.0.
+[36mi[38;5;255m Please use a list of either functions or lambdas:
+
+# Simple named list: list(mean = mean, median = median)
+
+# Auto named with `tibble::lst()`: tibble::lst(mean, median)
+
+# Using lambdas list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[38;5;255m
+[90mCall `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.[38;5;255m[39m
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in mean.default(Locality) :"
+"2","
+ "
+"2"," argument is not numeric or logical: returning NA
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"2","Warning in var(if (is.vector(x) || is.factor(x)) x else as.double(x), na.rm = na.rm) :"
+"2","
+ "
+"2"," NAs introduced by coercion
+"
+"0","head(plotting_table_SD)"

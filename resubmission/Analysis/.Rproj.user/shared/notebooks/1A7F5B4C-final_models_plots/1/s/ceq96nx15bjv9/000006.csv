@@ -1,0 +1,8 @@
+"0",""
+"0","res_ecto_stats$Forage_year <- res_ecto_stats$Forage/res_ecto_stats$Year"
+"0","res_ecto_stats$Bask_year <- res_ecto_stats$Bask/res_ecto_stats$Year"
+"0",""
+"0","res_ecto_stats$Fecundity_year <- res_ecto_stats$Fecundity/res_ecto_stats$Year"
+"0","res_ecto_stats$Clutches_year <- res_ecto_stats$Clutches/res_ecto_stats$Year"
+"0",""
+"0","head(res_ecto_stats)"

@@ -1,0 +1,674 @@
+---
+title: "Statistical analysis of microclimate and ectotherm outputs"
+output: html_document
+author: Urban Dajcman
+date: "2023-10-26"
+fig_width: 9 
+fig_height: 7 
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(message=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+knitr::opts_chunk$set(tidy=TRUE)
+
+
+```
+
+
+
+```{r}
+using<-function(...) {
+    libs<-unlist(list(...))
+    req<-unlist(lapply(libs,require,character.only=TRUE))
+    need<-libs[req==FALSE]
+    if(length(need)>0){ 
+        install.packages(need)
+        lapply(need,require,character.only=TRUE)
+    }
+}
+```
+
+
+```{r}
+using("dplyr", "ggplot2", "ggpubr", "rstatix", "NCmisc", "car", "lme4", "DHARMa", "emmeans", "performance", "sjPlot", "rphylopic", "jpeg", "flexplot", "report", "broom", "ggfortify", "MASS", "jtools", "svglite",  "multcomp", "vegan", "showtext", "formatR", "AICcmodavg")
+```
+
+
+```{r}
+rm(list = ls())
+```
+
+
+
+## Prepare modeling data.frames
+
+
+```{r, warning=FALSE, message=FALSE}
+load("../../Results/ECTOTHERM_results/results_all_ecto_springTP.Rda")
+res_ecto_stats_spring <- results_all
+```
+
+
+```{r, warning=FALSE, message=FALSE}
+#Get yearly values
+res_ecto_stats_spring$Forage_year <- res_ecto_stats_spring$Forage/res_ecto_stats_spring$Year 
+res_ecto_stats_spring$Bask_year <- res_ecto_stats_spring$Bask/res_ecto_stats_spring$Year
+res_ecto_stats_spring$Fecundity_year <- res_ecto_stats_spring$Fecundity/res_ecto_stats_spring$Year
+res_ecto_stats_spring$Clutches_year <- res_ecto_stats_spring$Clutches/res_ecto_stats_spring$Year
+
+#Rename values
+res_ecto_stats_spring$Species[res_ecto_stats_spring$Species == "Ihor"] <- "I. horvathi" 
+res_ecto_stats_spring$Species[res_ecto_stats_spring$Species == "Pmur"] <- "P. muralis"
+
+res_ecto_stats_spring$Sintopy[res_ecto_stats_spring$Sintopy == "sint"] <- "Sintopy"
+res_ecto_stats_spring$Sintopy[res_ecto_stats_spring$Sintopy == "aloPmur"] <- "Muralis allotopy"
+res_ecto_stats_spring$Sintopy[res_ecto_stats_spring$Sintopy == "aloIhor"] <- "Horvathi allotopy"
+
+
+#Turn to factor
+res_ecto_stats_spring$Locality <- as.factor(res_ecto_stats_spring$Locality)
+res_ecto_stats_spring$Sintopy <- as.factor(res_ecto_stats_spring$Sintopy)
+res_ecto_stats_spring$Species <- as.factor(res_ecto_stats_spring$Species)
+str(res_ecto_stats_spring)
+
+res_ecto_stats_spring <- res_ecto_stats_spring %>%
+                  rename(Loc_type = Sintopy)
+
+
+res_ecto_stats_spring <- res_ecto_stats_spring[, c("Locality", "Elevation", "Loc_type", "Species", "MeanTALOC", "MeanRHLOC", "Solar", "NO_Snow", "egg_dev", "LifeSpan", "Years_repro", "Bask_year", "Forage_year", "Fecundity_year")]
+
+head(res_ecto_stats_spring)
+
+str(res_ecto_stats_spring)
+
+## Microclimate analysis table
+
+loc_stats <- res_ecto_stats_spring %>% distinct(MeanTALOC, .keep_all = TRUE)
+
+```
+
+
+# Models and plots for elevation, species and sintopy analysis for the SPRING Tpref predictions
+
+## Egg development time
+
+```{r}
+library(lmerTest)
+library(MuMIn)
+
+res_ecto_stats_spring
+
+#check data distribution
+gghistogram(res_ecto_stats_spring$egg_dev, bins = 15)+
+  theme_pubclean()
+ggboxplot(res_ecto_stats_spring$egg_dev)+
+  theme_pubclean()+
+  labs(y=NULL, x=NULL)
+
+#Check lm model first
+lm_eggDev <- lm(egg_dev ~ Elevation+Species+Loc_type, data = res_ecto_stats_spring)
+lm_eggDev_int <- lm(egg_dev ~ Elevation*Species+Loc_type, data = res_ecto_stats_spring)
+lm_eggDev_int2<- lm(egg_dev ~ Elevation*Loc_type+Species, data = res_ecto_stats_spring)
+lm_eggDev_int3<- lm(egg_dev ~ Elevation+Loc_type*Species, data = res_ecto_stats_spring)
+lm_eggDev_int4<- lm(egg_dev ~ Elevation*Loc_type*Species, data = res_ecto_stats_spring)
+
+lmm_eggDev1 <- lmer(egg_dev ~ Elevation*Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_eggDev2 <- lmer(egg_dev ~ Elevation+Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_eggDev3 <- lmer(egg_dev ~ Elevation*Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_eggDev4 <- lmer(egg_dev ~ Elevation+Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_eggDev5 <- lmer(egg_dev ~ Elevation*Species+Loc_type+(1|Locality), data = res_ecto_stats_spring)
+
+
+# Compare models using AICc explicitly
+
+# LM
+model_list_egg <- list(lm_eggDev, lm_eggDev_int, lm_eggDev_int2, lm_eggDev_int3, lm_eggDev_int4)
+model_names_egg <- c("lm_eggDev", "lm_eggDev_int", "lm_eggDev_int2", "lm_eggDev_int3", "lm_eggDev_int4")
+aictab(cand.set = model_list_egg, modnames = model_names_egg, second.ord = TRUE)
+#LMM
+
+model_list_egg <- list(lmm_eggDev1, lmm_eggDev2, lmm_eggDev3, lmm_eggDev4, lmm_eggDev5)
+model_names_egg <- c("lmm_eggDev1", "lmm_eggDev2", "lmm_eggDev3", "lmm_eggDev4", "lmm_eggDev5")
+aictab(cand.set = model_list_egg, modnames = model_names_egg, second.ord = TRUE)
+
+summary(lm_eggDev) ## NO SIGNIFICANT INTERACTIONS
+summary(lmm_eggDev2) ## NO SIGNIFICANT INTERACTIONS
+
+Anova(lm_eggDev, type = 2)
+
+# Get summary and p values
+
+    visualize(lm_eggDev)
+    
+   EggDev_plot_spring <- visualize(lm_eggDev, egg_dev~Elevation+Loc_type |Species, method="lm", plot="model")+
+                scale_color_manual(values = c("firebrick", "gold", "navyblue"))+
+     scale_shape_manual(values =c(19, 19, 19))+
+                scale_linetype_manual(values =c(1, 1, 1))+
+      theme_classic()+
+      labs_pubr()+
+      labs(title = NULL, y=expression(paste("Egg development time (days)")), x=NULL)+
+      theme(
+        strip.text = element_text(face = "italic"),
+        axis.text=element_text(size=11),
+        axis.title=element_text(size=12,face="bold"))+
+    facet_wrap(~Species)
+   
+   EggDev_plot_spring
+   
+#ggsave("plot_ecto_eggdev_spring.pdf", plot=EggDev_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+#ggsave("plot_ecto_eggdev_spring.svg", plot=EggDev_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+#ggsave("plot_ecto_eggdev_spring.png", plot=EggDev_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300, bg="white")
+    
+
+   
+#Check model fit, residuals etc.
+    
+    autoplot(lm_eggDev)+
+      theme_classic()
+    
+    shapiro.test(residuals(lm_eggDev))
+    
+    
+#Check comparisons
+    summary(glht(lm_eggDev, linfct = mcp(Loc_type = 'Tukey')))
+    
+
+    
+```
+
+
+## Lifespan
+
+```{r}
+
+#check data
+gghistogram(res_ecto_stats_spring$LifeSpan, bins = 6)
+ggboxplot(res_ecto_stats_spring$LifeSpan)
+
+#Check lm model first
+
+lm_Lifespan <- lm(LifeSpan ~ Elevation + Species+ Loc_type, data = res_ecto_stats_spring)
+lm_Lifespan_int <- lm(LifeSpan ~ Elevation*Species+Loc_type, data = res_ecto_stats_spring)
+lm_Lifespan_int2<- lm(LifeSpan ~ Elevation*Loc_type+Species, data = res_ecto_stats_spring)
+lm_Lifespan_int3<- lm(LifeSpan ~ Elevation+Loc_type*Species, data = res_ecto_stats_spring)
+lm_Lifespan_int4<- lm(LifeSpan ~ Elevation*Loc_type*Species, data = res_ecto_stats_spring)
+
+
+lmm_Lifespan1 <- lmer(LifeSpan ~ Elevation*Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Lifespan2 <- lmer(LifeSpan ~ Elevation+Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Lifespan3 <- lmer(LifeSpan ~ Elevation*Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Lifespan4 <- lmer(LifeSpan ~ Elevation+Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Lifespan5 <- lmer(LifeSpan ~ Elevation*Species+Loc_type+(1|Locality), data = res_ecto_stats_spring)
+
+
+# Compare models using AICc explicitly
+
+# LM
+model_list_lifespan <- list(lm_Lifespan, lm_Lifespan_int, lm_Lifespan_int2, lm_Lifespan_int3, lm_Lifespan_int4)
+model_names_lifespan <- c("lm_Lifespan", "lm_Lifespan_int", "lm_Lifespan_int2", "lm_Lifespan_int3", "lm_Lifespan_int4")
+aictab(cand.set = model_list_lifespan, modnames = model_names_lifespan, second.ord = TRUE)
+
+# LMM
+model_list_lifespanLMM <- list(lmm_Lifespan1, lmm_Lifespan2, lmm_Lifespan3, lmm_Lifespan4, lmm_Lifespan5)
+model_names_lifespanLMM <- c("lmm_Lifespan1", "lmm_Lifespan2", "lmm_Lifespan3", "lmm_Lifespan4", "lmm_Lifespan5")
+aictab(cand.set = model_list_lifespanLMM, modnames = model_names_lifespanLMM, second.ord = TRUE)
+
+
+summary(lm_Lifespan) ## NO SIGNIFICANT INTERACTIONS, CHECKED MODELS BY AIC AND COMPARED FITS
+Anova(lm_Lifespan, type = 2)
+
+summary(lmm_Lifespan2)
+
+
+
+# Get summary and p values
+
+     visualize(lm_Lifespan)
+    
+    Lifespan_plot_spring <-   visualize(lm_Lifespan, LifeSpan~Elevation + Loc_type|Species, method="lm", plot="model")+
+                scale_color_manual(values = c("firebrick", "gold", "navyblue"))+
+      scale_shape_manual(values =c(19, 19, 19))+
+                scale_linetype_manual(values =c(1, 1, 1))+
+      theme_classic()+
+      labs_pubr()+
+      labs(title = NULL, y=expression(paste("Lifespan (years)")), x=NULL)+
+      theme(
+        #strip.text = element_text(face = "italic"),
+         #axis.text=element_text(size=11),
+        #axis.title=element_text(size=12,face="bold")
+        strip.background = element_blank(),
+  strip.text.x = element_blank())+
+    facet_wrap(~Species)
+    
+  Lifespan_plot_spring
+  
+#ggsave("plot_ecto_lifespan_spring.pdf", plot=Lifespan_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+#ggsave("plot_ecto_lifespan_spring.svg", plot=Lifespan_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+#ggsave("plot_ecto_lifespan_spring.png", plot=Lifespan_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300, bg="white")
+  
+    
+    
+    #Check model fit, residuals etc.
+    
+    autoplot(lm_Lifespan)+
+      theme_classic()
+    
+    shapiro.test(residuals(lm_Lifespan))
+    
+   #Check comparisons
+    
+    summary(glht(lm_Lifespan, linfct = mcp(Loc_type = 'Tukey')))
+    
+
+```
+
+## Years reproducing
+
+```{r}
+
+#check data
+gghistogram(res_ecto_stats_spring$Years_repro, bins = 8)
+ggboxplot(res_ecto_stats_spring$Years_repro)
+
+
+#Check lm model first
+lm_YearsRepro_noLoc <- lm(Years_repro ~ Elevation + Species, data = res_ecto_stats_spring)
+lm_YearsRepro <- lm(Years_repro ~ Elevation + Species + Loc_type, data = res_ecto_stats_spring)
+lm_YearsRepro_int <- lm(Years_repro ~ Elevation*Species+Loc_type, data = res_ecto_stats_spring)
+lm_YearsRepro_int2<- lm(Years_repro ~ Elevation*Loc_type+Species, data = res_ecto_stats_spring)
+lm_YearsRepro_int3<- lm(Years_repro ~ Elevation+Loc_type*Species, data = res_ecto_stats_spring)
+lm_YearsRepro_int4<- lm(Years_repro ~ Elevation*Loc_type*Species, data = res_ecto_stats_spring)
+
+
+lmm_yearsRepro1 <- lmer(Years_repro ~ Elevation*Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_yearsRepro2 <- lmer(Years_repro ~ Elevation+Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_yearsRepro3 <- lmer(Years_repro ~ Elevation*Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_yearsRepro4 <- lmer(Years_repro ~ Elevation+Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_yearsRepro5 <- lmer(Years_repro ~ Elevation*Species+Loc_type+(1|Locality), data = res_ecto_stats_spring)
+
+
+# Compare models using AICc explicitly
+
+# LM
+model_list_years <- list(lm_YearsRepro_noLoc, lm_YearsRepro, lm_YearsRepro_int, lm_YearsRepro_int2,   lm_YearsRepro_int3, lm_YearsRepro_int4)
+model_names_years <- c("lm_YearsRepro_noLoc", "lm_YearsRepro", "lm_YearsRepro_int", "lm_YearsRepro_int2",   "lm_YearsRepro_int3", "lm_YearsRepro_int4")
+
+aictab(cand.set = model_list_years, modnames = model_names_years, second.ord = TRUE)
+
+# LMM
+model_list_yearsLMM <- list(lmm_yearsRepro1, lmm_yearsRepro2, lmm_yearsRepro3, lmm_yearsRepro4, lmm_yearsRepro5)
+model_names_yearsLMM <- c("lmm_yearsRepro1", "lmm_yearsRepro2", "lmm_yearsRepro3", "lmm_yearsRepro4", "lmm_yearsRepro5")
+aictab(cand.set = model_list_yearsLMM, modnames = model_names_yearsLMM, second.ord = TRUE)
+
+
+summary(lm_YearsRepro_noLoc) ## OPT FOR SIMPLER MODEL
+Anova(lm_YearsRepro_noLoc)
+
+summary(lmm_yearsRepro2)
+
+
+
+# Get summary and p values
+  
+    
+  visualize(lm_YearsRepro_noLoc)
+    
+  YearsRepro_plot_spring <-  visualize(lm_YearsRepro_noLoc, Years_repro~Elevation | Species,method="lm", plot="model")+
+                scale_color_manual(values = c("black"))+
+      theme_classic()+
+      labs_pubr()+
+      labs(title = NULL, y=expression(paste("Years reproducing (years)")), x=NULL)+
+        theme(strip.background = element_blank(),
+  strip.text.x = element_blank(),
+  axis.text=element_text(size=11),
+        axis.title=element_text(size=12,face="bold"))+
+    facet_wrap(~Species)
+  
+  YearsRepro_plot_spring
+  
+            ggsave("plot_ecto_yrepro_spring.pdf", plot=YearsRepro_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_yrepro_spring.svg", plot=YearsRepro_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_yrepro_spring.png", plot=YearsRepro_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300, bg="white")
+    
+    
+    #Check model fit, residuals etc.
+    
+    autoplot(lm_YearsRepro_noLoc)+
+      theme_classic()
+    
+    shapiro.test(residuals(lm_YearsRepro_noLoc))
+    
+  
+```
+
+
+## Yearly basking time FROM HERE ON ADD LMM
+
+```{r}
+
+#check data
+gghistogram(res_ecto_stats_spring$Bask_year, bins = 8)
+ggboxplot(res_ecto_stats_spring$Bask_year)
+
+
+#Check lm model first
+lm_BaskYear <- lm(Bask_year ~ Elevation + Species + Loc_type, data = res_ecto_stats_spring)
+lm_BaskYear_int <- lm(Bask_year ~ Elevation*Species+Loc_type, data = res_ecto_stats_spring)
+lm_BaskYear_int2<- lm(Bask_year ~ Elevation*Loc_type+Species, data = res_ecto_stats_spring)
+lm_BaskYear_int3<- lm(Bask_year ~ Elevation+Loc_type*Species, data = res_ecto_stats_spring)
+lm_BaskYear_int4<- lm(Bask_year ~ Elevation*Loc_type*Species, data = res_ecto_stats_spring)
+
+lmm_Bask_year1 <- lmer(Bask_year ~ Elevation*Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Bask_year2 <- lmer(Bask_year ~ Elevation+Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Bask_year3 <- lmer(Bask_year ~ Elevation*Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Bask_year4 <- lmer(Bask_year ~ Elevation+Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Bask_year5 <- lmer(Bask_year ~ Elevation*Species+Loc_type+(1|Locality), data = res_ecto_stats_spring)
+
+# LM
+model_list_Bask <- list(lm_BaskYear, lm_BaskYear_int, lm_BaskYear_int2, lm_BaskYear_int3,   lm_BaskYear_int4)
+model_names_Bask <- c("lm_BaskYear", "lm_BaskYear_int", "lm_BaskYear_int2", "lm_BaskYear_int3",   "lm_BaskYear_int4")
+
+aictab(cand.set = model_list_Bask, modnames = model_names_Bask, second.ord = TRUE)
+
+# LMM
+model_list_Bask_LMM <- list(lmm_Bask_year1, lmm_Bask_year2, lmm_Bask_year3, lmm_Bask_year4,   lmm_Bask_year5)
+model_names_Bask_lMM <- c("lmm_Bask_year1", "lmm_Bask_year2", "lmm_Bask_year3", "lmm_Bask_year4",   "lmm_Bask_year5")
+aictab(cand.set = model_list_Bask_LMM, modnames = model_names_Bask_lMM, second.ord = TRUE)
+
+
+summary(lm_BaskYear) ## NO SIGNIFICANT INTERACTIONS
+Anova(lm_BaskYear, type = 2)
+
+summary(lmm_Bask_year4)
+
+
+# Get summary and p values
+
+    visualize(lm_BaskYear)
+    
+    Basking_plot_spring <- visualize(lm_BaskYear, Bask_year~Elevation + Loc_type|Species, method="lm", plot="model")+
+                scale_color_manual(values = c("firebrick", "gold", "navyblue"))+
+      scale_shape_manual(values =c(19, 19, 19))+
+                scale_linetype_manual(values =c(1, 1, 1))+
+      theme_classic()+
+      labs_pubr()+
+      labs(title = NULL, y=expression(paste("Mean yearly basking time (hours)")), x=NULL)+
+          theme(strip.background = element_blank(),
+  strip.text.x = element_blank(),
+   axis.text=element_text(size=11),
+        axis.title=element_text(size=12,face="bold"))+
+    facet_wrap(~Species)
+    
+    Basking_plot_spring
+    
+          ggsave("plot_ecto_baske_spring.pdf", plot=Basking_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_baske_spring.svg", plot=Basking_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_baske_spring.png", plot=Basking_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300, bg="white")
+
+    #Check model fit, residuals etc.
+    
+    autoplot(lm_BaskYear)+
+      theme_classic()
+    
+    shapiro.test(residuals(lm_BaskYear))
+    
+   #Check comparisons
+            
+    summary(glht(lm_BaskYear, linfct = mcp(Loc_type = 'Tukey')))
+ 
+
+```
+
+## Forage time
+
+
+
+```{r}
+
+#check data
+gghistogram(res_ecto_stats_spring$Forage_year, bins = 8)
+ggboxplot(res_ecto_stats_spring$Forage_year)
+
+
+#Check lm model first
+
+lm_ForageYear <- lm(Forage_year ~ Elevation + Species + Loc_type, data = res_ecto_stats_spring)
+lm_ForageYear_int <- lm(Forage_year ~ Elevation*Species+Loc_type, data = res_ecto_stats_spring)
+lm_ForageYear_int2<- lm(Forage_year ~ Elevation*Loc_type+Species, data = res_ecto_stats_spring)
+lm_ForageYear_int3<- lm(Forage_year ~ Elevation+Loc_type*Species, data = res_ecto_stats_spring)
+lm_ForageYear_int4<- lm(Forage_year ~ Elevation*Loc_type*Species, data = res_ecto_stats_spring)
+
+lmm_Forage_year1 <- lmer(Forage_year ~ Elevation*Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Forage_year2 <- lmer(Forage_year ~ Elevation+Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Forage_year3 <- lmer(Forage_year ~ Elevation*Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Forage_year4 <- lmer(Forage_year ~ Elevation+Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Forage_year5 <- lmer(Forage_year ~ Elevation*Species+Loc_type+(1|Locality), data = res_ecto_stats_spring)
+
+# LM
+model_list_Forage <- list(lm_ForageYear, lm_ForageYear_int, lm_ForageYear_int2, lm_ForageYear_int3, lm_ForageYear_int4)
+model_names_Forage <- c("lm_ForageYear", "lm_ForageYear_int", "lm_ForageYear_int2", "lm_ForageYear_int3", "lm_ForageYear_int4")
+aictab(cand.set = model_list_Forage, modnames = model_names_Forage, second.ord = TRUE)
+
+# LMM
+model_list_Forage_LMM <- list(lmm_Forage_year1, lmm_Forage_year2, lmm_Forage_year3, lmm_Forage_year4,   lmm_Forage_year5)
+model_names_Forage_lMM <- c("lmm_Forage_year1", "lmm_Forage_year2", "lmm_Forage_year3", "lmm_Forage_year4",   "lmm_Forage_year5")
+aictab(cand.set = model_list_Forage_LMM, modnames = model_names_Forage_lMM, second.ord = TRUE)
+
+
+
+
+
+summary(lm_ForageYear_int) ## lowest AICc with interaction Elevation*Species
+Anova(lm_ForageYear_int, type=3)
+
+summary(lmm_Forage_year4)
+
+    
+# Plot
+    
+    visualize(lm_ForageYear_int)
+   
+    Forage_plot_spring <-  visualize(lm_ForageYear_int, Forage_year~Elevation + Loc_type|Species, method="lm", plot="model")+
+                scale_color_manual(values = c("firebrick", "gold", "navyblue"))+
+                scale_shape_manual(values =c(19, 19, 19))+
+                scale_linetype_manual(values =c(1, 1, 1))+
+      theme_classic()+
+      labs_pubr()+
+      labs(title = NULL, y=expression(paste("Mean yearly foraging time (hours)")), x="Elevation (m)")+
+          theme(strip.background = element_blank(),
+  strip.text.x = element_blank(),
+   axis.text=element_text(size=11),
+        axis.title=element_text(size=12,face="bold"))+
+    facet_wrap(~Species)
+    
+    Forage_plot_spring
+    
+      ggsave("plot_ecto_forage_spring.pdf", plot=Forage_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_forage_spring.svg", plot=Forage_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_forage_spring.png", plot=Forage_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300, bg="white")
+    
+    
+    #Check model fit, residuals etc.
+    
+    autoplot(lm_ForageYear)+
+      theme_classic()
+    
+    shapiro.test(residuals(lm_ForageYear))
+
+    
+   #Check comparisons
+    
+    summary(glht(lm_ForageYear, linfct = mcp(Loc_type = 'Tukey')))
+ 
+
+
+```
+
+
+## Fecundity per year
+
+```{r}
+
+#check data distribution
+gghistogram(res_ecto_stats_spring$Fecundity_year, bins = 15)
+ggboxplot(res_ecto_stats_spring$Fecundity_year)
+
+#Check lm model first
+
+lm_FecundityYear <- lm(Fecundity_year ~Elevation+Species+Loc_type, data = res_ecto_stats_spring)
+lm_FecundityYear_int <- lm(Fecundity_year ~ Elevation*Species+Loc_type, data = res_ecto_stats_spring)
+lm_FecundityYear_int2<- lm(Fecundity_year ~Elevation*Loc_type+Species, data = res_ecto_stats_spring)
+lm_FecundityYear_int3<- lm(Fecundity_year ~Elevation+Loc_type*Species, data = res_ecto_stats_spring)
+lm_FecundityYear_int4<- lm(Fecundity_year ~Elevation*Loc_type*Species, data = res_ecto_stats_spring)
+
+lmm_Fecundity_year1 <- lmer(Fecundity_year ~ Elevation*Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Fecundity_year2 <- lmer(Fecundity_year ~ Elevation+Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Fecundity_year3 <- lmer(Fecundity_year ~ Elevation*Loc_type+Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Fecundity_year4 <- lmer(Fecundity_year ~ Elevation+Loc_type*Species+(1|Locality), data = res_ecto_stats_spring)
+lmm_Fecundity_year5 <- lmer(Fecundity_year ~ Elevation*Species+Loc_type+(1|Locality), data = res_ecto_stats_spring)
+
+# LM
+model_list_Fecundity <- list(lm_FecundityYear, lm_FecundityYear_int, lm_FecundityYear_int2, lm_FecundityYear_int3, lm_FecundityYear_int4)
+model_names_Fecundity <- c("lm_FecundityYear", "lm_FecundityYear_int", "lm_FecundityYear_int2", "lm_FecundityYear_int3", "lm_FecundityYear_int4")
+aictab(cand.set = model_list_Fecundity, modnames = model_names_Fecundity, second.ord = TRUE)
+
+# LMM
+model_list_Fecundity_LMM <- list(lmm_Fecundity_year1, lmm_Fecundity_year2, lmm_Fecundity_year3, lmm_Fecundity_year4,   lmm_Fecundity_year5)
+model_names_Fecundity_lMM <- c("lmm_Fecundity_year1", "lmm_Fecundity_year2", "lmm_Fecundity_year3", "lmm_Fecundity_year4",   "lmm_Fecundity_year5")
+aictab(cand.set = model_list_Fecundity_LMM, modnames = model_names_Fecundity_lMM, second.ord = TRUE)
+
+
+
+summary(lm_FecundityYear_int) ##  interaction between elevation and species
+Anova(lm_FecundityYear_int, type = 3)
+
+
+summary(lmm_Fecundity_year4)
+    
+  # Plot
+    visualize(lm_FecundityYear_int)
+    
+Fecundity_plot_spring <-  visualize(lm_FecundityYear_int, Fecundity_year~Elevation + Loc_type|Species, method="lm", plot="model")+
+                scale_color_manual(values = c("firebrick", "gold", "navyblue"))+
+                scale_shape_manual(values =c(19, 19, 19))+
+                scale_linetype_manual(values =c(1, 1, 1))+
+     theme_classic()+
+      labs_pubr()+
+      labs(title = NULL, y=expression(paste("Mean yearly fecundity \n      (n. offspring)")), x="Elevation (m)")+
+    theme(strip.background = element_blank(),
+  strip.text.x = element_blank(),
+  axis.text=element_text(size=11),
+        axis.title=element_text(size=12,face="bold"))+
+    facet_wrap(~Species)
+  
+
+  
+  Fecundity_plot_spring
+ 
+  
+  ## alternative way to  plot the fixed effects using ggplot2; in case of review; 
+  ##although should be filtered to ensure they only show within rang predictions
+#  library(ggeffects)
+  
+#  predictions <- ggpredict(lm_FecundityYear_int, terms = c("Elevation", "Loc_type", "Species"))
+#  predictions <- predictions %>% dplyr::rename(Species = facet)
+#  predictions$Species
+
+  
+#   alt_fec_plot <-      ggplot() + 
+#          geom_point(data = res_ecto_stats_spring, aes(x = Elevation, y = Fecundity_year, color = Loc_type), alpha = 0.6) +
+#          geom_line(data = predictions, aes(x = x, y = predicted, color = group, linetype = Species), linewidth = 1) +
+#           scale_color_manual(values = c("firebrick", "gold", "navyblue"))+
+#          facet_wrap(~ Species, scales = "fixed") +  
+#          labs_pubr()+
+#      labs(title = NULL, y=expression(paste("Mean yearly fecundity \n      (n. offspring)")), x="Elevation (m)")+
+#    theme(strip.background = element_blank(),
+#  strip.text.x = element_blank(),
+#  axis.text=element_text(size=11),
+#       axis.title=element_text(size=12,face="bold"))+
+#          theme_classic()
+  
+#   alt_fec_plot  
+  
+  
+  
+  
+#ggsave("plot_ecto_fecundity_spring.pdf", plot=Fecundity_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+#ggsave("plot_ecto_fecundity_spring.svg", plot=Fecundity_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+#ggsave("plot_ecto_fecundity_spring.png", plot=Fecundity_plot_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300, bg="white")
+  
+    
+    
+#Check model fit, residuals etc.
+    
+    autoplot(lm_FecundityYear_int)+
+      theme_classic()
+    
+    shapiro.test(residuals(lm_FecundityYear_int))
+    
+#Check comparisons
+    summary(glht(lm_FecundityYear_int, linfct = mcp(Loc_type = 'Tukey')))
+    
+  
+```
+
+
+
+
+## Arrange plots
+
+```{r}
+plot_ecto_spring <- ggarrange(EggDev_plot_spring, Lifespan_plot_spring, YearsRepro_plot_spring, Basking_plot_spring, Forage_plot_spring, Fecundity_plot_spring, nrow = 3, ncol = 2, labels = NULL, common.legend = FALSE, legend = "none", font.label = list(size = 13, color = "black", face = "bold"))
+
+plot_ecto_spring
+
+
+ggsave("plot_ecto_final_updated_spring.pdf", plot=plot_ecto_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_final_updated_spring.svg", plot=plot_ecto_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300)
+ggsave("plot_ecto_final_updated_spring.png", plot=plot_ecto_spring, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=20, dpi=300, bg="white")
+
+
+## alt plot
+plot_ecto_spring_vert <- ggarrange(EggDev_plot_spring, Lifespan_plot_spring, YearsRepro_plot_spring, Basking_plot_spring, Forage_plot_spring, Fecundity_plot_spring, nrow = 6, ncol = 1, labels = NULL, common.legend = FALSE, legend = "none", font.label = list(size = 13, color = "black", face = "bold"))
+
+plot_ecto_spring_vert
+
+
+ggsave("plot_ecto_spring_vert.pdf", plot=plot_ecto_spring_vert, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=35, dpi=300)
+ggsave("plot_ecto_spring_vert.svg", plot=plot_ecto_spring_vert, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=35, dpi=300)
+ggsave("plot_ecto_spring_vert.png", plot=plot_ecto_spring_vert, path = "../../Figures/Ectotherm_plots/", units="cm", width=20, height=35, dpi=300, bg="white")
+```
+
+
+
+
+
+
+
+## Summary tables for supplementary material SPRING
+
+### LM results
+
+```{r}
+summary(lm_eggDev)
+summary(lm_Lifespan)
+summary(lm_YearsRepro_noLoc)
+summary(lm_BaskYear)
+summary(lm_ForageYear_int) 
+summary(lm_FecundityYear_int)
+
+```
+
+
+### Post-hoc comparison
+
+```{r}
+ summary(glht(lm_eggDev, linfct = mcp(Loc_type = 'Tukey')))
+ summary(glht(lm_Lifespan, linfct = mcp(Loc_type = 'Tukey')))
+ summary(glht(lm_BaskYear, linfct = mcp(Loc_type = 'Tukey')))
+ summary(glht(lm_ForageYear_int, linfct = mcp(Loc_type = 'Tukey')))
+ summary(glht(lm_FecundityYear_int, linfct = mcp(Loc_type = 'Tukey')))
+```

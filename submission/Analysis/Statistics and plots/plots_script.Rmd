@@ -1,0 +1,240 @@
+---
+title: "grafi_SEH_ecto"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+using<-function(...) {
+    libs<-unlist(list(...))
+    req<-unlist(lapply(libs,require,character.only=TRUE))
+    need<-libs[req==FALSE]
+    if(length(need)>0){ 
+        install.packages(need)
+        lapply(need,require,character.only=TRUE)
+    }
+}
+
+
+using("dplyr", "ggplot2", "ggpubr", "rstatix", "NCmisc", "car")
+```
+
+
+```{r}
+#knitr::purl("plots_script.Rmd")
+
+#summary(NCmisc::list.functions.in.file("plots_script.R"))
+```
+
+
+
+
+```{r}
+rm(list = ls())
+```
+
+
+```{r}
+load("../../Results/ECTOTHERM_results/results_all_ecto.Rda")
+
+results_all
+```
+
+Get yearly values and arrange new dataframe
+```{r}
+plot_res_all <- results_all
+
+plot_res_all$Forage_year <- plot_res_all$Forage/plot_res_all$Year
+plot_res_all$Bask_year <- plot_res_all$Bask/plot_res_all$Year
+
+plot_res_all$Fecundity_year <- plot_res_all$Fecundity/plot_res_all$Years_repro
+plot_res_all$Clutches_year <- plot_res_all$Clutches/plot_res_all$Years_repro
+
+plot_res_all
+```
+
+
+```{r}
+plot_res_all_2 <- plot_res_all %>% mutate(Species = ifelse(Species=="Pmur", "P.muralis", "I. horvathi"))
+
+
+plot_res_all_2$Sintopy <- as.character(plot_res_all_2$Sintopy)
+   
+
+plot_res_all_2$Sintopy[plot_res_all_2$Sintopy == "sint"] <- "Sintopy"
+plot_res_all_2$Sintopy[plot_res_all_2$Sintopy == "aloPmur"] <- "Muralis allotopy"
+plot_res_all_2$Sintopy[plot_res_all_2$Sintopy == "aloIhor"] <- "Horvathi allotopy"
+
+
+
+plot_res_all_2 <- plot_res_all_2 %>% reorder_levels(Sintopy, order = c("Muralis allotopy", "Sintopy", "Horvathi allotopy"))
+
+
+colnames(plot_res_all_2)
+
+head(plot_res_all_2)
+
+
+```
+
+
+
+```{r}
+plotting_table_SD<- plot_res_all_2 %>% 
+    group_by(Species,Sintopy) %>%
+    summarise_each(funs(mean,sd,se=sd(.)/sqrt(n())))
+
+
+head(plotting_table_SD)
+```
+
+
+## Plots
+
+```{r}
+pd <- position_dodge(0.2) # move them .05 to the left and right
+group.colors=c("I. horvathi" = "red2", "P. muralis" = "yellow2")
+
+```
+
+
+
+```{r}
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=Bask_year_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Bask_year_mean-Bask_year_se, ymax=Bask_year_mean+Bask_year_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=AnnualAct_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=AnnualAct_mean-AnnualAct_se, ymax=AnnualAct_mean+AnnualAct_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=birthday_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=birthday_mean-birthday_se, ymax=birthday_mean+birthday_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=MonMature_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=MonMature_mean-MonMature_se, ymax=MonMature_mean+MonMature_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=MonRepro_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=MonRepro_mean-MonRepro_se, ymax=MonRepro_mean+MonRepro_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=Fecundity_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Fecundity_mean-Fecundity_se, ymax=Fecundity_mean+Fecundity_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=Clutches_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Clutches_mean-Clutches_se, ymax=Clutches_mean+Clutches_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=LifeSpan_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=LifeSpan_mean-LifeSpan_se, ymax=LifeSpan_mean+LifeSpan_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+ggplot(plotting_table_SD, aes(x=Sintopy, y=Forage_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Forage_mean-Forage_se, ymax=Forage_mean+Forage_se), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 5)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+
+Bask_plot <-ggplot(plotting_table_SD, aes(x=Sintopy, y=Bask_mean, group=Species)) + 
+    geom_errorbar(aes(ymin=Bask_mean-Bask_se, ymax=Bask_mean+Bask_se, colour=Species), width=0.2, linewidth=0.6, position=pd) +
+    geom_point(aes(fill = Species), shape=21, color="black", position=pd, size = 4)+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  geom_point(data=plot_res_all_2, aes(x=Sintopy, y=Bask, group = Species, colour=interaction(Species, Sintopy)), alpha=0.3, size=2, position = pd)+
+  scale_color_manual(values = c("red2", "red2","grey", "red2", "yellow2", "grey", "yellow2", "yellow2"))+
+  theme_pubclean()+
+   theme(legend.position = "none")
+
+Bask_plot
+
+
+ ggsave("Bask_plot.png", plot=Bask_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+
+
+
+
+```
+```{r}
+plotting_table_SD$Species
+plotting_table_SD$Sintopy
+```
+
+
+```{r}
+colnames(plot_res_all_2)
+```
+
+
+```{r}
+
+ggplot(plot_res_all_2, aes(x=Elevation, y=Bask_year, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x)+
+  scale_shape_manual(values = c(21,22,23))+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  scale_color_manual(values = c("red2", "yellow2"))+
+  theme_pubr()
+  #theme(legend.position = "none")
+
+ggplot(plot_res_all_2, aes(x=Elevation, y=Fecundity_year, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x)+
+  scale_shape_manual(values = c(21,22,23))+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  scale_color_manual(values = c("red2", "yellow2"))+
+  theme_pubr()+
+  theme(legend.position = "none")
+
+activity_elev_plot <- ggplot(plot_res_all_2, aes(x=Elevation, y=AnnualAct, group=Species)) + 
+    geom_point(aes(fill = Species, shape = Sintopy), color="black", position=pd, size = 3)+
+  #geom_smooth(aes(color=Species, fill=Species), alpha=0.1, method='glm', formula= y~x, se=FALSE )+
+    geom_line(aes(color=Species, group=interaction(Sintopy, Species), linetype=Sintopy), stat="smooth",method = "lm", formula = y ~ x,
+              size = 1.3,
+              alpha = 0.8)+
+  
+  scale_shape_manual(values = c(21,22,23))+
+  scale_linetype_manual(values = c("dotted", "solid", "dashed"))+
+  scale_fill_manual(values = c("red2", "yellow2"))+
+  scale_color_manual(values = c("red2", "yellow2"))+
+  theme_pubclean()+
+ theme(legend.position = "none")
+
+activity_elev_plot
+
+
+
+ ggsave("activity_elev_plot.png", plot=activity_elev_plot, path = "../../Figures", units="cm", width=15, height=15, dpi=300 )
+
+```
+
+
+
+
+
+

@@ -1,0 +1,31 @@
+"0","    shapiro.test(residuals(glmer_BaskYear))"
+"1","
+"
+"1","	Shapiro-Wilk normality test"
+"1","
+"
+"1","
+"
+"1","data:  "
+"1",""
+"1","residuals(glmer_BaskYear)"
+"1",""
+"1","
+"
+"1","W = 0.93832, p-value = 0.08195"
+"1","
+"
+"1","
+"
+"0","    "
+"0","    "
+"0","    #Check model fit, residuals etc."
+"0","    "
+"0","    simulationOutput <- simulateResiduals(fittedModel = glmer_BaskYear)"
+"0","  plot(simulationOutput)"
+"2","Registered S3 methods overwritten by 'htmltools':
+  method               from         
+  print.html           tools:rstudio
+  print.shiny.tag      tools:rstudio
+  print.shiny.tag.list tools:rstudio
+"

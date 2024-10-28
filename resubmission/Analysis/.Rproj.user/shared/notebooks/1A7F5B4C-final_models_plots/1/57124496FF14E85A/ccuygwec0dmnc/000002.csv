@@ -1,0 +1,43 @@
+"0","using<-function(...) {"
+"0","    libs<-unlist(list(...))"
+"0","    req<-unlist(lapply(libs,require,character.only=TRUE))"
+"0","    need<-libs[req==FALSE]"
+"0","    if(length(need)>0){ "
+"0","        install.packages(need)"
+"0","        lapply(need,require,character.only=TRUE)"
+"0","    }"
+"0","}"
+"0",""
+"0",""
+"0","using(""dplyr"", ""ggplot2"", ""ggpubr"", ""rstatix"", ""NCmisc"", ""car"", ""lme4"", ""DHARMa"", ""emmeans"", ""performance"", ""sjPlot"", ""rphylopic"")"
+"2","Loading required package: lme4
+"
+"2","Warning:"
+"2"," package ‘lme4’ was built under R version 4.1.3
+"
+"2","Loading required package: Matrix
+"
+"2","Warning:"
+"2"," package ‘Matrix’ was built under R version 4.1.3
+"
+"2","Loading required package: DHARMa
+"
+"2","Warning:"
+"2"," package ‘DHARMa’ was built under R version 4.1.3
+"
+"2","This is DHARMa 0.4.6. For overview type '?DHARMa'. For recent changes, type news(package = 'DHARMa')
+"
+"2","Loading required package: emmeans
+"
+"2","Warning:"
+"2"," package ‘emmeans’ was built under R version 4.1.3
+"
+"2","Loading required package: performance
+"
+"2","Loading required package: sjPlot
+"
+"2","Warning:"
+"2"," package ‘sjPlot’ was built under R version 4.1.3
+"
+"2","#refugeeswelcome
+"
